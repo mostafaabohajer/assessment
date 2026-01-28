@@ -10,26 +10,35 @@
 ### Q1 – Cancellation Rate per Day (Core)
 
 ```sql
-SELECT
+WITH cte AS (
+    SELECT
     DATE(t.request_at) AS day,
-    ROUND(
-    SUM(CASE WHEN t.status IN ('cancelled_by_driver','cancelled_by_client') THEN 1 ELSE 0 END)
-    / NULLIF(COUNT(*), 0),
-    2
-    ) AS cancellation_rate
-FROM trips AS t
-    JOIN users AS c
-        ON c.id = t.client_id
-        AND c.banned = 'no'
-        AND c.role   = 'client'
-    JOIN users AS d
-        ON d.id = t.driver_id
-        AND d.banned = 'no'
-        AND d.role   = 'driver'
+    COUNT(*) AS total,
+    SUM(
+    CASE
+    WHEN t.status IN ('cancelled_by_driver', 'cancelled_by_client')
+    THEN 1 ELSE 0
+    END
+    ) AS canceled
+FROM trips t
+    JOIN users uc
+ON uc.id = t.client_id
+    AND uc.banned = 'no'
+    AND uc.role = 'client'
+    JOIN users ud
+    ON ud.id = t.driver_id
+    AND ud.banned = 'no'
+    AND ud.role = 'driver'
 WHERE t.request_at >= '2013-10-01'
-  AND t.request_at <  '2013-10-04'
+  AND t.request_at <=  '2013-10-03'
 GROUP BY DATE(t.request_at)
+    )
+SELECT
+    day AS `Day`,
+    ROUND(canceled / NULLIF(total, 0), 2) AS `Cancellation Rate`
+FROM cte
 ORDER BY day;
+
 
 ```
 
@@ -54,6 +63,8 @@ arithmetic, and index/range queries are more efficient and reliable.
 ## Part B – Algorithm / Coding
 
 ### Q3 – Function to Compute Daily Cancellation Rate
+
+### javascript
 
 ```javascript
 function cancellationRates(users, trips, startDate, endDate) {
@@ -100,6 +111,124 @@ function cancellationRates(users, trips, startDate, endDate) {
 
   return results;
 }
+```
+### python
+
+```python
+users = [
+    {"id": 1, "banned": "No", "role": "client"},
+    {"id": 2, "banned": "No", "role": "driver"},
+    {"id": 3, "banned": "Yes", "role": "client"},
+    {"id": 4, "banned": "No", "role": "driver"},
+    {"id": 5, "banned": "No", "role": "client"},
+    {"id": 6, "banned": "Yes", "role": "driver"},
+]
+
+trips = [
+    {
+        "id": 1,
+        "client_id": 1,
+        "driver_id": 2,
+        "city_id": 1,
+        "status": "completed",
+        "request_at": "2023-10-01",
+    },
+    {
+        "id": 2,
+        "client_id": 1,
+        "driver_id": 4,
+        "city_id": 1,
+        "status": "cancelled_by_client",
+        "request_at": "2023-10-01",
+    },
+    {
+        "id": 3,
+        "client_id": 5,
+        "driver_id": 2,
+        "city_id": 2,
+        "status": "cancelled_by_driver",
+        "request_at": "2023-10-01",
+    },
+    {
+        "id": 4,
+        "client_id": 3,  # client banned
+        "driver_id": 2,
+        "city_id": 2,
+        "status": "completed",
+        "request_at": "2023-10-02",
+    },
+    {
+        "id": 5,
+        "client_id": 1,
+        "driver_id": 6,  # driver banned
+        "city_id": 1,
+        "status": "cancelled_by_driver",
+        "request_at": "2023-10-02",
+    },
+    {
+        "id": 6,
+        "client_id": 5,
+        "driver_id": 4,
+        "city_id": 3,
+        "status": "completed",
+        "request_at": "2023-10-02",
+    },
+    {
+        "id": 7,
+        "client_id": 5,
+        "driver_id": 4,
+        "city_id": 3,
+        "status": "cancelled_by_client",
+        "request_at": "2023-10-03",
+    },
+    {
+        "id": 8,
+        "client_id": 1,
+        "driver_id": 2,
+        "city_id": 1,
+        "status": "completed",
+        "request_at": "2023-10-03",
+    },
+]
+
+start_date = "2023-10-01"
+end_date = "2023-10-03"
+
+
+def cancellation_rates(users, trips, start_date, end_date):
+    user_status = {user["id"]: user["banned"] for user in users}
+
+    totals_by_day = {}
+    cancelled_by_day = {}
+
+    for trip in trips:
+        if trip["request_at"] < start_date or trip["request_at"] > end_date:
+            continue
+
+        client_banned = user_status.get(trip["client_id"])
+        driver_banned = user_status.get(trip["driver_id"])
+
+        if client_banned != "No" or driver_banned != "No":
+            continue
+
+        day = trip["request_at"]
+        totals_by_day[day] = totals_by_day.get(day, 0) + 1
+
+        if trip["status"] in ("cancelled_by_driver", "cancelled_by_client"):
+            cancelled_by_day[day] = cancelled_by_day.get(day, 0) + 1
+
+    results = []
+    for day, total in totals_by_day.items():
+        cancelled = cancelled_by_day.get(day, 0)
+        rate = 0 if total == 0 else round(cancelled / total, 2)
+        results.append({
+            "day": day,
+            "cancellation_rate": rate
+        })
+
+    return results
+
+print(cancellation_rates(users, trips, start_date, end_date))
 ```
 
 **Time complexity**: `O(U + T)` where `U` is the number of users and `T` is the
