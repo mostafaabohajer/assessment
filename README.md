@@ -1,7 +1,6 @@
 # Taxi Trips Cancellation Rate – Solutions
 
 ##### The solution was implemented using Laravel 12 with React for the frontend.
-##### I chose not to use the ORM in the reporting layer, as the task is aggregation-heavy and better suited for direct database queries for clarity and performance.
 ##### The Vite configuration was adjusted to support HMR in a Docker-based local environment, with the host set to assessment.local to match the domain used in the browser.
 ##### The application environment was also updated by setting APP_URL=http://assessment.local to ensure correct URL resolution in the local setup.
 
@@ -112,6 +111,13 @@ function cancellationRates(users, trips, startDate, endDate) {
   return results;
 }
 ```
+**Time complexity**: `O(U + T)` where `U` is the number of users and `T` is the
+number of trips.
+
+**Data structures used**: `Map` for user lookup (`userStatus`) and two `Map`s
+for per-day totals and cancellations to keep constant-time updates.
+
+
 ### python
 
 ```python
@@ -196,19 +202,20 @@ end_date = "2023-10-03"
 
 
 def cancellation_rates(users, trips, start_date, end_date):
+    # Build user_id -> banned status lookup (O(U))
     user_status = {user["id"]: user["banned"] for user in users}
 
     totals_by_day = {}
     cancelled_by_day = {}
 
+    # Iterate over trips (O(T))
     for trip in trips:
         if trip["request_at"] < start_date or trip["request_at"] > end_date:
             continue
 
-        client_banned = user_status.get(trip["client_id"])
-        driver_banned = user_status.get(trip["driver_id"])
-
-        if client_banned != "No" or driver_banned != "No":
+        if user_status.get(trip["client_id"]) != "No":
+            continue
+        if user_status.get(trip["driver_id"]) != "No":
             continue
 
         day = trip["request_at"]
@@ -217,16 +224,15 @@ def cancellation_rates(users, trips, start_date, end_date):
         if trip["status"] in ("cancelled_by_driver", "cancelled_by_client"):
             cancelled_by_day[day] = cancelled_by_day.get(day, 0) + 1
 
-    results = []
-    for day, total in totals_by_day.items():
-        cancelled = cancelled_by_day.get(day, 0)
-        rate = 0 if total == 0 else round(cancelled / total, 2)
-        results.append({
+    return [
+        {
             "day": day,
-            "cancellation_rate": rate
-        })
-
-    return results
+            "cancellation_rate": round(
+                cancelled_by_day.get(day, 0) / total, 2
+            )
+        }
+        for day, total in totals_by_day.items()
+    ]
 
 print(cancellation_rates(users, trips, start_date, end_date))
 ```
@@ -234,8 +240,11 @@ print(cancellation_rates(users, trips, start_date, end_date))
 **Time complexity**: `O(U + T)` where `U` is the number of users and `T` is the
 number of trips.
 
-**Data structures used**: `Map` for user lookup (`userStatus`) and two `Map`s
-for per-day totals and cancellations to keep constant-time updates.
+**Data structures used**:
+
+user_status for user banned status
+
+totals_by_day and cancelled_by_day for per-day aggregation.
 
 ### Q4 – Edge Cases
 
