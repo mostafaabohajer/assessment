@@ -243,6 +243,50 @@ export default function Welcome() {
 
 
 
+    const maxRate = useMemo(() => {
+        if (!rates.length) {
+            return 0;
+        }
+        return Math.max(...rates.map((rate) => rate.cancellation_rate));
+    }, [rates]);
+
+    const chartData = useMemo(() => {
+        if (!rates.length || maxRate === 0) {
+            return [];
+        }
+
+        return rates.map((rate) => ({
+            ...rate,
+            height: Math.round((rate.cancellation_rate / maxRate) * 100),
+        }));
+    }, [maxRate, rates]);
+
+    const chartPoints = useMemo(() => {
+        if (!chartData.length) {
+            return '';
+        }
+
+        if (chartData.length === 1) {
+            return '50,10';
+        }
+
+        return chartData
+            .map((rate, index) => {
+                const x = (index / (chartData.length - 1)) * 100;
+                const y = 100 - rate.height;
+                return `${x},${y}`;
+            })
+            .join(' ');
+    }, [chartData]);
+
+    const chartStops = useMemo(() => {
+        return chartData.map((rate, index) => {
+            const offset = chartData.length === 1 ? 50 : (index / (chartData.length - 1)) * 100;
+            const y = 100 - rate.height;
+            return { ...rate, offset, y };
+        });
+    }, [chartData]);
+
     return (
         <>
             <Head title="Cancellation Rate" />
@@ -398,6 +442,77 @@ export default function Welcome() {
                             </div>
                         </section>
 
+                        <section className="rounded-3xl border border-slate-200 bg-white p-6 shadow-[0_20px_60px_rgba(15,23,42,0.08)]">
+                            <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
+                                <div className="space-y-2">
+                                    <h2 className="text-lg font-semibold text-slate-900">
+                                        Cancellation rate chart
+                                    </h2>
+                                    <p className="text-sm text-slate-600">
+                                        Visual trend of daily cancellations for the selected range.
+                                    </p>
+                                </div>
+                                <div className="flex flex-wrap gap-3">
+                                    <div className="rounded-2xl border border-slate-200 bg-slate-50 px-4 py-2 text-xs">
+                                        <p className="text-[10px] font-semibold uppercase tracking-[0.2em] text-slate-500">
+                                            Max
+                                        </p>
+                                        <p className="text-lg font-semibold text-slate-900">
+                                            {maxRate.toFixed(2)}
+                                        </p>
+                                    </div>
+                                </div>
+                            </div>
+
+                            {chartData.length ? (
+                                <div className="mt-8 grid gap-6 lg:grid-cols-[auto_1fr]">
+                                    <div className="flex flex-col justify-between text-xs font-medium text-slate-500">
+                                        <span>{maxRate.toFixed(2)}</span>
+                                        <span>0.00</span>
+                                    </div>
+                                    <div className="flex flex-col gap-8 rounded-2xl border border-slate-200 bg-gradient-to-br from-white via-slate-50 to-cyan-50/70 px-6 py-8 shadow-inner">
+                                        <div className="relative h-64 w-full">
+                                            <div className="pointer-events-none absolute inset-0 rounded-2xl bg-[linear-gradient(transparent_75%,rgba(148,163,184,0.2)_75%),linear-gradient(90deg,rgba(148,163,184,0.2)_1px,transparent_1px)] bg-[length:100%_25%,20%_100%]" />
+                                            <svg viewBox="0 0 100 100" className="relative h-full w-full overflow-visible">
+                                                <defs>
+                                                    <linearGradient id="lineGradient" x1="0" y1="0" x2="1" y2="0">
+                                                        <stop offset="0%" stopColor="#22d3ee" stopOpacity="0.25" />
+                                                        <stop offset="100%" stopColor="#0e7490" stopOpacity="0.45" />
+                                                    </linearGradient>
+                                                </defs>
+                                                <polyline
+                                                    fill="none"
+                                                    stroke="#0891b2"
+                                                    strokeWidth="2.5"
+                                                    strokeLinecap="round"
+                                                    strokeLinejoin="round"
+                                                    points={chartPoints}
+                                                />
+                                                <polygon
+                                                    points={`${chartPoints} 100,100 0,100`}
+                                                    fill="url(#lineGradient)"
+                                                />
+                                                {chartStops.map((rate) => (
+                                                    <circle
+                                                        key={rate.day}
+                                                        cx={rate.offset}
+                                                        cy={rate.y}
+                                                        r="3"
+                                                        fill="#0e7490"
+                                                        stroke="#e0f2fe"
+                                                        strokeWidth="1.5"
+                                                    />
+                                                ))}
+                                            </svg>
+                                        </div>
+                                    </div>
+                                </div>
+                            ) : (
+                                <div className="mt-6 rounded-2xl border border-dashed border-slate-200 bg-slate-50 px-6 py-10 text-center text-sm text-slate-500">
+                                    Run the report to display the cancellation rate chart.
+                                </div>
+                            )}
+                        </section>
                     </div>
                 </div>
             </div>
