@@ -21,11 +21,11 @@ WITH cte AS (
     ) AS canceled
 FROM trips t
     JOIN users uc
-ON uc.id = t.client_id
+ON uc.users_id = t.client_id
     AND uc.banned = 'no'
     AND uc.role = 'client'
     JOIN users ud
-    ON ud.id = t.driver_id
+    ON ud.users_id = t.driver_id
     AND ud.banned = 'no'
     AND ud.role = 'driver'
 WHERE t.request_at >= '2013-10-01'
@@ -37,9 +37,13 @@ SELECT
     ROUND(canceled / NULLIF(total, 0), 2) AS `Cancellation Rate`
 FROM cte
 ORDER BY day;
-
-
 ```
+
+###### uc.role = 'client', ud.role = 'driver'
+Added to ensure the client and driver are treated with their correct roles at query time,
+since user roles may have changed for older trip records.
+
+
 
 ### Q2 – Data Modeling / Indexing
 
@@ -242,9 +246,11 @@ number of trips.
 
 **Data structures used**:
 
-user_status for user banned status
+Dictionaries (Hash Maps):
 
-totals_by_day and cancelled_by_day for per-day aggregation.
+user_status for constant-time banned user checks
+
+totals_by_day and cancelled_by_day for efficient per-day counting
 
 ### Q4 – Edge Cases
 
