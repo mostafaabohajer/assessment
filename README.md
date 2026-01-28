@@ -43,6 +43,7 @@ ORDER BY day;
 Added to ensure the client and driver are treated with their correct roles at query time,
 since user roles may have changed for older trip records.
 
+---
 
 
 ### Q2 – Data Modeling / Indexing
@@ -62,6 +63,9 @@ since user roles may have changed for older trip records.
 Use a `DATE` (or `DATETIME`/`TIMESTAMP` if time-of-day matters) column instead
 of `VARCHAR`. Native date types are more compact, validate input, allow date
 arithmetic, and index/range queries are more efficient and reliable.
+
+---
+
 
 ## Part B – Algorithm / Coding
 
@@ -121,6 +125,8 @@ number of trips.
 **Data structures used**: `Map` for user lookup (`userStatus`) and two `Map`s
 for per-day totals and cancellations to keep constant-time updates.
 
+---
+
 
 ### python
 
@@ -136,74 +142,18 @@ users = [
 
 trips = [
     {
-        "id": 1,
-        "client_id": 1,
-        "driver_id": 2,
-        "city_id": 1,
-        "status": "completed",
-        "request_at": "2023-10-01",
+        "id": 1, "client_id": 1, "driver_id": 2,
+        "status": "completed", "request_at": "2023-10-01",
     },
     {
-        "id": 2,
-        "client_id": 1,
-        "driver_id": 4,
-        "city_id": 1,
-        "status": "cancelled_by_client",
-        "request_at": "2023-10-01",
+        "id": 2, "client_id": 1, "driver_id": 4,
+        "status": "cancelled_by_client", "request_at": "2023-10-01",
     },
-    {
-        "id": 3,
-        "client_id": 5,
-        "driver_id": 2,
-        "city_id": 2,
-        "status": "cancelled_by_driver",
-        "request_at": "2023-10-01",
-    },
-    {
-        "id": 4,
-        "client_id": 3,  # client banned
-        "driver_id": 2,
-        "city_id": 2,
-        "status": "completed",
-        "request_at": "2023-10-02",
-    },
-    {
-        "id": 5,
-        "client_id": 1,
-        "driver_id": 6,  # driver banned
-        "city_id": 1,
-        "status": "cancelled_by_driver",
-        "request_at": "2023-10-02",
-    },
-    {
-        "id": 6,
-        "client_id": 5,
-        "driver_id": 4,
-        "city_id": 3,
-        "status": "completed",
-        "request_at": "2023-10-02",
-    },
-    {
-        "id": 7,
-        "client_id": 5,
-        "driver_id": 4,
-        "city_id": 3,
-        "status": "cancelled_by_client",
-        "request_at": "2023-10-03",
-    },
-    {
-        "id": 8,
-        "client_id": 1,
-        "driver_id": 2,
-        "city_id": 1,
-        "status": "completed",
-        "request_at": "2023-10-03",
-    },
+    # ... (other test data) ...
 ]
 
 start_date = "2023-10-01"
 end_date = "2023-10-03"
-
 
 def cancellation_rates(users, trips, start_date, end_date):
     # Build user_id -> banned status lookup (O(U))
@@ -252,9 +202,44 @@ user_status for constant-time banned user checks
 
 totals_by_day and cancelled_by_day for efficient per-day counting
 
+
+---
+
+
 ### Q4 – Edge Cases
+
+*  **Scenario:**
+    ```python
+    users = [
+        {'id': 1, 'banned': 'No', 'role': 'client'},
+        {'id': 2, 'banned': 'No', 'role': 'driver'},    
+    ]
+
+    trips = [
+        {'id': 1, 'client_id': 999, 'driver_id': 2, 'status': 'completed', 'request_at': '2013-10-01'},
+    ]
+    ```
+
+    **Expected Result:** Empty array `[]`
+
+    **Reason:** The client_id 999 doesn't exist in users, so this trip is invalid and should be excluded.
+
 
 * **A day has no valid trips (all trips involve banned/missing users).**
   Expected: that day is omitted from the output entirely.
+
+
 * **All valid trips are completed (no cancellations).**
   Expected: cancellation rate is `0.00` for that day.
+
+
+---
+
+## Summary
+
+This solution demonstrates:
+- Proper SQL query optimization with indexes
+- Understanding of database design principles
+- Efficient algorithmic thinking with appropriate data structures
+- Edge case handling and defensive programming
+- Clear documentation and code comments

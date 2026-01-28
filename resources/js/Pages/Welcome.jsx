@@ -242,7 +242,6 @@ export default function Welcome() {
     }
 
 
-
     const maxRate = useMemo(() => {
         if (!rates.length) {
             return 0;
